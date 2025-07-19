@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Gren Canvas</title>
+    <script src="gren.js"></script>
+</head>
+
+<body>
+    <div id="gren-target"></div>
+    <script type="text/javascript">
+        const app = Gren.Main.init({
+            node: document.getElementById("gren-target")
+        })
+        app.ports.canvasCmds.subscribe(function ({ canvasId, cmds }) {
+            // var canvas = document.getElementById("canvas")
+            // var ctx = canvas.getContext("2d")
+            // ctx.clearRect(0, 0, 640, 360)
+            // ctx.fillStyle = "red"
+            // ctx.fillRect(0, 0, 640, 360)
+
+            const OP_SET = 1
+            const OP_CALL = 2
+
+            const canvas = document.getElementById(canvasId)
+            const ctx = canvas.getContext("2d")
+            for (const cmd of cmds) {
+                const { op, name, args } = cmd
+                if (op === OP_SET) {
+                    ctx[name] = args
+                }
+                else if (op == OP_CALL) {
+                    ctx[name].apply(ctx, args)
+                }
+                else {
+                    console.error("Unknown operation " + op)
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>

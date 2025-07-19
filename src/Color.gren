@@ -1,0 +1,86 @@
+module Color exposing (Color, namedColor, rgb255, rgba255, rgbaFloats, toString)
+
+import Math
+
+type Color
+    = ColorName String
+    | ColorHex { r: Int, g: Int, b: Int, a: Int }
+    | ColorFloats { r: Float, g: Float, b: Float, a: Float }
+
+
+namedColor : String -> Color
+namedColor name =
+    ColorName name
+
+
+rgb255 : Int -> Int -> Int -> Color
+rgb255 r g b =
+    ColorHex
+        { r = r
+        , g = g
+        , b = b
+        , a = 255
+        }
+
+
+rgba255 : Int -> Int -> Int -> Int -> Color
+rgba255 r g b a =
+    ColorHex
+        { r = r
+        , g = g
+        , b = b
+        , a = a
+        }
+
+
+rgbaFloats : Float -> Float -> Float -> Float -> Color
+rgbaFloats r g b a =
+    ColorFloats
+        { r = r
+        , g = g
+        , b = b
+        , a = a
+        }
+
+
+toString : Color -> String
+toString color =
+    when color is
+        ColorName name -> name
+        ColorHex {r, g, b, a} ->
+            let
+                nybbleToString : Int -> String
+                nybbleToString x =
+                    when x is
+                        10 -> "A"
+                        11 -> "B"
+                        12 -> "C"
+                        13 -> "D"
+                        14 -> "E"
+                        15 -> "F"
+                        _ -> String.fromInt x
+
+                highHex : Int -> String
+                highHex x =
+                    nybbleToString (x // 16)
+                
+                lowHex : Int -> String
+                lowHex x =
+                    nybbleToString (Math.modBy 16 x)
+
+                toHexColor : Int -> String
+                toHexColor x =
+                    highHex x ++ lowHex x
+            in
+            "#" ++ toHexColor r ++ toHexColor g ++ toHexColor b ++ toHexColor a
+        
+        ColorFloats {r, g, b, a} ->
+            "rgba("
+            ++ String.fromFloat r
+            ++ ","
+            ++ String.fromFloat g
+            ++ ","
+            ++ String.fromFloat b
+            ++ ","
+            ++ String.fromFloat a
+            ++ ")"

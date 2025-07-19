@@ -1,0 +1,36 @@
+module Main exposing (..)
+
+import Browser
+import Color
+import Html exposing (Html)
+import Html.Attributes as Attrs
+import Html.Canvas as Canvas exposing (Canvas)
+
+main : Program {} {} {}
+main =
+    let
+        canvas : Canvas
+        canvas =
+            { id = "canvas"
+            , width = 640
+            , height = 360
+            }
+    in
+    Browser.element
+        { init = \_ -> 
+            { model = {}
+            , command = 
+                Canvas.fromFullClear canvas
+                    (Canvas.fillRect
+                        { color = Color.rgb255 0 255 0
+                        , x = 0
+                        , y = 0
+                        , width = 640
+                        , height = 360
+                        }
+                    )
+            }
+        , update = \_ _ -> {model = {}, command = Cmd.none }
+        , view = \_ -> Html.div [] [ Canvas.view canvas ]
+        , subscriptions = \_ -> Sub.none
+        }

@@ -1,0 +1,94 @@
+port module Html.Canvas exposing (Canvas, CanvasCmd, fromFullClear, fillRect, view)
+
+import Color exposing (Color)
+import Html exposing (Html)
+import Html.Attributes as Attrs
+import Json.Encode as Json
+
+port canvasCmds : Json.Value -> Cmd msg
+
+
+type alias Canvas =
+    { id: String
+    , width: Int
+    , height: Int
+    }
+
+
+type CanvasCmdOperation
+    = Set
+    | Call
+
+
+type CanvasCmd
+    = CanvasCmd
+        { op: CanvasCmdOperation
+        , name: String
+        , args: Array Json.Value
+        }
+
+
+-- Canvas Cmds
+
+fillRect : { color : Color, x : Int, y : Int, width : Int, height : Int } -> Array CanvasCmd
+fillRect { color, x, y, width, height } =
+    [ CanvasCmd
+        { op = Set
+        , name = "fillStyle"
+        , args = color |> Color.toString |> Json.string |> Array.singleton
+        }
+    , CanvasCmd
+        { op = Call
+        , name = "fillRect"
+        , args = Array.map Json.int [ x, y, width, height ]
+        }
+    ]
+
+
+-- View
+
+view : Canvas -> Html msg
+view { id, width, height } = 
+    Html.canvas [ Attrs.id id, Attrs.width width, Attrs.height height] []
+
+
+-- Gren Cmds
+
+
+fromFullClear : Canvas -> Array CanvasCmd -> Cmd msg
+fromFullClear canvas cmds =
+    let
+        fullClear : CanvasCmd
+        fullClear =
+            CanvasCmd
+                { op = Call
+                , name = "clearRect"
+                , args =
+                    [ Json.int 0
+                    , Json.int 0
+                    , Json.int canvas.width
+                    , Json.int canvas.height
+                    ]
+                }
+    in
+    canvasCmds
+        (Json.object
+            [ { key = "canvasId", value = Json.string canvas.id }
+            , { key = "cmds"
+              , value =
+                  Json.array
+                    (\(CanvasCmd { op, name, args }) ->
+                        Json.object
+                            [ { key = "op"
+                              , value =
+                                  when op is
+                                    Set -> Json.int 1
+                                    Call -> Json.int 2
+                              }
+                            , { key = "name", value = Json.string name }
+                            , { key = "args", value = Json.array identity args }
+                            ]
+                    )
+                    ([fullClear] ++ cmds)
+              }
+            ])
