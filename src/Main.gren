@@ -1,36 +1,161 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Events
 import Color
 import Html exposing (Html)
 import Html.Attributes as Attrs
 import Html.Canvas as Canvas exposing (Canvas)
+import Math
+import Random
 
-main : Program {} {} {}
-main =
+-- Constants
+
+canvasWidth : Int
+canvasWidth = 640
+
+canvasHeight : Int
+canvasHeight = 360
+
+extents : Float
+extents = 40
+
+speed : Float
+speed = 80
+
+canvas : Canvas
+canvas =
+    { id = "canvas"
+    , width = canvasWidth
+    , height = canvasHeight
+    }
+
+
+-- Model
+
+type alias Model =
+    { box: { x: Float, y: Float, velocity: { x: Float, y: Float } } }
+
+
+drawScene : Model -> Cmd msg
+drawScene model =
+    Canvas.fromFullClear canvas
+        (Canvas.fillRect
+            { color = Color.rgb255 0 255 0
+            , x = 0
+            , y = 0
+            , width = canvasWidth
+            , height = canvasHeight
+            }
+        ++ Canvas.fillRect
+            { color = Color.rgb255 0 0 255
+            , x = Math.round model.box.x - (Math.round extents // 2)
+            , y = Math.round model.box.y - (Math.round extents // 2)
+            , width = Math.round extents
+            , height = Math.round extents
+            }
+        )
+
+
+-- Init
+
+init : {} -> { model : Model, command : Cmd Msg }
+init _ =
     let
-        canvas : Canvas
-        canvas =
-            { id = "canvas"
-            , width = 640
-            , height = 360
+        model : Model
+        model =
+            { box =
+                { x = toFloat canvasWidth / 2
+                , y = toFloat canvasHeight / 2
+                , velocity = { x = 0, y = 0 }
+                }
             }
     in
-    Browser.element
-        { init = \_ -> 
-            { model = {}
-            , command = 
-                Canvas.fromFullClear canvas
-                    (Canvas.fillRect
-                        { color = Color.rgb255 0 255 0
-                        , x = 0
-                        , y = 0
-                        , width = 640
-                        , height = 360
+    { model = model
+    , command =
+        Cmd.batch
+            [ Random.generate InitAngle (Random.float 0 (2 * Math.pi))
+            , drawScene model
+            ]
+    }
+
+
+-- Msg
+
+type Msg
+    = InitAngle Float
+    | Tick Float
+
+
+-- Update
+
+update : Msg -> Model -> { model : Model, command : Cmd Msg }
+update msg model =
+    when msg is
+        InitAngle angle ->
+            let
+                box = model.box
+            in
+            { model = 
+                { model
+                    | box = 
+                        { box
+                            | velocity = 
+                                { x = speed * Math.cos angle
+                                , y = speed * Math.sin angle
+                                }
                         }
-                    )
+                }
+            , command = drawScene model
             }
-        , update = \_ _ -> {model = {}, command = Cmd.none }
+
+        Tick dt ->
+            let
+                box = model.box
+            in
+            -- TODO: bouncing
+            { model =
+                { model
+                    | box =
+                        { box
+                            | x = model.box.x + model.box.velocity.x * dt / 1000
+                            , y = model.box.y + model.box.velocity.y * dt / 1000
+                            , velocity =
+                                { x =
+                                    if ((model.box.x - (extents / 2) < 0) && model.box.velocity.x < 0)
+                                        || (toFloat canvasWidth < model.box.x + (extents / 2) && 0 < model.box.velocity.x)
+                                    then
+                                        -model.box.velocity.x
+                                    else 
+                                        model.box.velocity.x
+                                , y =
+                                    if (model.box.y - (extents / 2) < 0 && model.box.velocity.y < 0)
+                                        || (toFloat canvasHeight < model.box.y + (extents / 2) && 0 < model.box.velocity.y)
+                                    then
+                                        -model.box.velocity.y
+                                    else
+                                        model.box.velocity.y
+                                }
+                        }
+                }
+            , command = drawScene model
+            }
+
+
+-- Subscriptions
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Browser.Events.onAnimationFrameDelta Tick
+
+
+-- Main
+
+main : Program {} Model Msg
+main =
+    Browser.element
+        { init = init
+        , update = update
         , view = \_ -> Html.div [] [ Canvas.view canvas ]
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = subscriptions
         }
